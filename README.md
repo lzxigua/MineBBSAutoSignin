@@ -13,7 +13,12 @@
 
 1. 确保你的电脑上已安装[Node.js](https://nodejs.org/zh-cn/)
 
-2. 下载或克隆本项目到本地
+2. 克隆本项目到本地
+
+```bash
+git clone https://github.com/lingran7031/MineBBSAutoSignin.git
+cd MineBBSAutoSignin
+```
 
 3. 打开命令行工具，进入项目目录
 
@@ -34,20 +39,20 @@ npm install
 配置文件 `config.json` 支持多账户配置，格式为账户对象数组：
 
 ```json
-[
-  {
-    "name": "账户1",
-    "cookies": "你的第一个账户cookie",
-    "csrfToken": "你的第一个账户csrfToken",
-    "checkInterval": 3600000
-  },
-  {
-    "name": "账户2",
-    "cookies": "你的第二个账户cookie",
-    "csrfToken": "你的第二个账户csrfToken",
-    "checkInterval": 3600000
-  }
-]
+{
+  "accounts": [
+    {
+      "name": "账户1",
+      "cookies": "你的第一个账户cookie",
+      "csrfToken": "你的第一个账户csrfToken"
+    },
+    {
+      "name": "账户2",
+      "cookies": "你的第二个账户cookie",
+      "csrfToken": "你的第二个账户csrfToken"
+    }
+  ]
+}
 ```
 
 ### 配置参数说明
