@@ -77,18 +77,18 @@ async function checkSigninStatus(axiosInstance) {
     try {
         console.log('正在检查签到状态...');
         const response = await axiosInstance.get('https://www.minebbs.com/');
-        
+
         // 检查是否已签到
-        const isSigned = response.data.includes('今日签到已完成') || 
-                       !response.data.includes('今日尚未签到');
-        
+        const isSigned = response.data.includes('今日签到已完成') ||
+            !response.data.includes('今日尚未签到');
+
         // 提取最新的csrf token（如果页面中有的话）
         const csrfMatch = response.data.match(/data-csrf="([^,]+),([^\"]+)"/);
         let csrfToken = null;
         if (csrfMatch && csrfMatch.length >= 3) {
             csrfToken = `${csrfMatch[1]},${csrfMatch[2]}`;
         }
-        
+
         return { isSigned, csrfToken };
     } catch (error) {
         console.error('检查签到状态失败:', error.message);
@@ -105,28 +105,28 @@ async function performSignin(axiosInstance, account) {
             console.error('CSRF Token 缺失，无法执行签到');
             return { success: false, message: 'CSRF Token 缺失' };
         }
-        
+
         const payload = new URLSearchParams();
         payload.append('_xfToken', csrfToken);
         payload.append('currency_ids[]', '1');
         payload.append('currency_ids[]', '5');
-        
-        const response = await axiosInstance.post('https://www.minebbs.com/credits/clock', 
+
+        const response = await axiosInstance.post('https://www.minebbs.com/credits/clock',
             payload.toString(), {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             }
         });
-        
+
         // 添加调试输出
         //console.log('服务器响应状态:', response.status);
         //console.log('服务器响应内容:', response.data);
         // 检查签到是否成功
-        const success = response.status === 200 && 
-                      (response.data.includes('签到成功') || 
-                       response.data.includes('今日签到已完成') ||
-                       response.data.includes('已签到'));
-        
+        const success = response.status === 200 &&
+            (response.data.includes('签到成功') ||
+                response.data.includes('今日签到已完成') ||
+                response.data.includes('已签到'));
+
         return { success, message: success ? '签到成功！' : '签到失败，请检查配置' };
     } catch (error) {
         console.error('签到请求失败:', error.message);
@@ -137,12 +137,12 @@ async function performSignin(axiosInstance, account) {
 // 主函数
 async function signin() {
     console.log('=== MineBBS自动签到脚本 ===');
-    
+
     try {
         // 读取配置
         const config = readConfig();
         const accounts = config.accounts || [];
-        
+
         // 遍历每个账户
         for (const account of accounts) {
             console.log(`\n=== 处理账户 ${account.name} ===`);
@@ -155,28 +155,35 @@ async function signin() {
             if (csrfToken) {
                 account.csrfToken = csrfToken;
             }
-            
+
             // 处理签到逻辑
             if (isSigned) {
                 console.log('今天已经签到过了，无需重复签到');
             } else {
-            const { success, message } = await performSignin(axiosInstance, account);
-            console.log(message);
-            
-            // 再次检查签到状态，确认是否成功
-            if (success) {
-                const { isSigned: newStatus } = await checkSigninStatus(axiosInstance);
-                if (newStatus) {
-                    console.log('确认签到成功！');
+                const { success, message } = await performSignin(axiosInstance, account);
+                console.log(message);
+                // 再次检查签到状态，确认是否成功
+                if (success) {
+                    const { isSigned: newStatus } = await checkSigninStatus(axiosInstance);
+                    if (newStatus) {
+                        console.log('确认签到成功！');
+                    }
                 }
             }
+            // 最后一个账户不等待
+            if (account === accounts[accounts.length - 1]) {
+                continue;
+            }
+            // 随机等待30-60秒 
+            const randomWait = Math.floor(Math.random() * 30000) + 30000;
+            console.log(`等待${randomWait / 1000}秒后继续...`);
+            await new Promise(resolve => setTimeout(resolve, randomWait));
+            
         }
-    }
     } catch (error) {
         console.error('脚本执行出错:', error);
     }
     console.log('=== 脚本执行完毕 ===\n');
 }
-
 // 运行主函数
 signin();
