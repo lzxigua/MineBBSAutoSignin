@@ -1,0 +1,16 @@
+{
+  "name": "minebbs-auto-signin",
+  "version": "1.0.0",
+  "description": "MineBBS我的世界中文论坛自动签到脚本",
+  "main": "signin.js",
+  "scripts": {
+    "start": "node signin.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.4.0",
+    "axios-cookiejar-support": "^4.0.0",
+    "tough-cookie": "^4.1.2"
+  }
+}
