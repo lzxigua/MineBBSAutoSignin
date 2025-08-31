@@ -14,6 +14,7 @@ function readConfig() {
     } catch (error) {
         console.error('读取配置文件失败，将创建默认配置:', error.message);
         const defaultConfig = {
+
             "accounts": [
                 {
                     "name": "账户1",
@@ -185,5 +186,7 @@ async function signin() {
     }
     console.log('=== 脚本执行完毕 ===\n');
 }
-// 运行主函数
-signin();
+// 导出签到函数
+module.exports = {
+    signin
+}

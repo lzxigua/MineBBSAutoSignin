@@ -4,13 +4,15 @@
   "description": "MineBBS我的世界中文论坛自动签到脚本",
   "main": "signin.js",
   "scripts": {
-    "start": "node signin.js"
+    "start": "node app.js",
+    "signin": "node signin.js"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
     "axios": "^1.4.0",
     "axios-cookiejar-support": "^4.0.0",
+    "node-schedule": "^2.1.1",
     "tough-cookie": "^4.1.2"
   }
 }
