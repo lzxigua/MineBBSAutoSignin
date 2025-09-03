@@ -1,6 +1,6 @@
 // 引入必要的模块
 const schedule = require('node-schedule');
-const signin = require('./signin.js');
+const { signin } = require('./signin.js');
 const fs = require("fs");
 const path = require("path");
 const configPath = path.join(__dirname, "./config.json");
@@ -75,7 +75,7 @@ async function main() {
 }
 
 // 导出函数
-module.exports = { startSchedule, runOnce };
+module.exports = { startSchedule, runOnce,main };
 
 // 如果直接运行此文件，则启动主程序
 if (require.main === module) {

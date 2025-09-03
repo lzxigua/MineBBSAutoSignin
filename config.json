@@ -2,14 +2,9 @@
   "executeTime": "08:00:00",
   "accounts": [
     {
-      "name": "tesddd",
-      "cookies": "sl-session=4rFcREvPsWh6miYkKVhpnA==; sl-challenge-server=cloud; xf_csrf=cYZJGLR-IEsH2uKN; _ga=GA1.1.1161592376.1756397030; xf_consent=%5B%22_third_party%22%2C%22optional%22%5D; xf_sam_ad_views=%7B%226%22%3A1756397037%2C%228%22%3A1756397087%7D; sl_jwt_session=G5WeBjCWTgO3lXJfz7L11x+VTgg00pLEzumru6raZIji30yp5dAZrEsX/5S161dU; _ga_QFJH602TJN=GS2.1.s1756397029$o1$g1$t1756397152$j47$l0$h0; xf_user=235241%2CQJXc-UMxEYd0__VdPMGwR9dkmsQcZUZHGd7YJ5pW; xf_session=ivSVcorkH-LD0yjjJMW0zcPaBHBy_R_I; sl_jwt_sign=gs7ozlVsKa3mXyMWkRdrATEuLuJOVnphp27xxIH/LxD06m6vYOHc9e2uk5sc9a7+UO8FCZ8pOKb/OsZc4CRqTyUQ39WKWtVWDmjszRuhUknlDKi+UuPPZ9E1LNLjd/4M",
-      "csrfToken": "1756397233,098ae8a7b44e7887f97b471654f18509"
-    },
-    {
-      "name": "auiji",
-      "cookies": "sl-session=AeFTAUbXsWiwlZbS+gH1WA==; sl-challenge-server=cloud; xf_csrf=6fDSl7CIdekeeTe7; sl_jwt_session=K/8szwa3KDAVOcxsPdSr2JwPszpA9tQfyMc/K4f5YrL0mfDOJ6zQbrrcOE9UCuyb; _ga=GA1.1.1287342958.1756399059; xf_consent=%5B%22_third_party%22%2C%22optional%22%5D; xf_sam_ad_views=%7B%228%22%3A1756399074%2C%226%22%3A1756399082%7D; xf_user=235250%2CJ0mreutZBhAnX738rijqIhbm5xihCNUyOMXYF2DQ; xf_session=lMBUlKvnfIzFRGVFmWx93OOsUED_iMLh; _ga_QFJH602TJN=GS2.1.s1756399058$o1$g1$t1756399101$j17$l0$h0; sl_jwt_sign=DM717hK7kuef94nLf2QjNvV0x31T6NT/zB2DsbYbcxVTHS+iJWrX/E5n6vXxX6cgs+yomCbuQx/yyiHgcsaBKo47ChOBKt6CS7EMT0xSSlzVgg9YAhpzTHsiy3vtKUyD",
-      "csrfToken": "1756399157,f8a41bd55f5f849f969457bf704aa345"
+      "name": "lingran",
+      "cookies": "_ga=GA1.1.2084019982.1755428755; xf_consent=%5B%22_third_party%22%2C%22optional%22%5D; sl-session=IdIADJG3tWjOdenwq1aK6Q==; xf_user=36319%2CRKWZTwYehA27-sIFaURVJCZJQT0SfUgRWWsq-9-F; sl-challenge-server=cloud; xf_csrf=AFrFZuQS4JadD1qS; xf_session=80z8uImyjyldauPvVCTpb4hjturQ_E8h; sl_jwt_session=TS8Y56z2ekr+yI1EllsRyJrV1xPBCF1FbAZzUclNfKsXvxc37oNjjXVM0EjWqV3J; xf_sam_ad_views=%7B%226%22%3A1756656589%7D; _ga_QFJH602TJN=GS2.1.s1756656559$o7$g1$t1756656571$j48$l0$h0; sl_jwt_sign=FlDaZFKxIzb1WXtG15mP+c5E0HHNC9CuyiMEPPxH+9iXh+PWTVCYQcC3pF1/mhiwVgker89B6DU2v0e30uK6uNnTGFbWFr5KUdOM1p0V4kN8xas7dxVYOQVDla6BL849",
+      "csrfToken": "1756656594,d9af61578ffb69bd468c8e6362c79499"
     }
   ]
 }

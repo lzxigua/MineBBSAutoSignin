@@ -187,6 +187,8 @@ async function signin() {
     console.log('=== 脚本执行完毕 ===\n');
 }
 // 导出签到函数
-module.exports = {
-    signin
+module.exports =signin
+// 如果直接运行此文件，则执行签到
+if (require.main === module) {
+    signin();
 }
