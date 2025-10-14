@@ -5,6 +5,18 @@ const fs = require("fs");
 const path = require("path");
 const configPath = path.join(__dirname, "./config.json");
 
+// 在独立进程中启动web服务器
+function startWebServer() {
+    try {
+        // 动态加载server.js来启动web服务器
+        require('./server.js');
+        console.log('Web服务器启动成功');
+    } catch (error) {
+        console.error('Web服务器启动失败:', error.message);
+    }
+}
+
+
 // 读取配置
 function readConfig() {
     try {
@@ -53,8 +65,13 @@ async function runOnce() {
 // 主函数
 async function main() {
     try {
+
+        // 启动web服务器
+        startWebServer();
+        
         // 启动定时任务
         const job = startSchedule();
+        
         
         // 程序持续运行
         console.log('定时任务已启动，程序将持续运行...');
