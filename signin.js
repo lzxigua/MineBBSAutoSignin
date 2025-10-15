@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 
-const configPath = path.join(__dirname, 'config.json');
+const configPath = path.join(__dirname, 'config/config.json');
 
 // 读取配置
 function readConfig() {

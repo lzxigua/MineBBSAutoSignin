@@ -90,7 +90,7 @@ docker run -d \
 
 #### 使用Docker Compose
 
-1. 确保docker-compose.yml已正确配置（已移除卷挂载）
+1. 确保docker-compose.yml已正确配置
 
 2. 使用Docker Compose构建和运行（本地构建方式）
 ```bash
@@ -114,12 +114,65 @@ services:
       - NODE_ENV=production
 ```
 
+#### 使用持久化配置文件（推荐）
+
+如果您希望配置文件在容器重启或重建后仍然保留，可以使用Docker卷挂载来持久化配置。
+
+##### 方法一：使用Docker命令行挂载配置目录
+
+1. 首先在本地创建配置目录
+```bash
+mkdir -p ./config
+```
+
+2. 启动容器并挂载配置目录
+```bash
+docker run -d \
+  --name minebbs-autosignin \
+  -p 3000:3000 \
+  -v "$(pwd)/config:/app/config" \
+  --restart unless-stopped \
+  lingran7031/minebbs-auto-signin:latest
+```
+
+##### 方法二：使用Docker Compose持久化配置
+
+修改docker-compose.yml文件，添加卷挂载配置：
+```yaml
+version: '3'
+
+services:
+  minebbs-autosignin:
+    image: lingran7031/minebbs-auto-signin:latest
+    container_name: minebbs-autosignin
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      # 将本地config目录挂载到容器内的/app/config目录
+      - ./config:/app/config
+    environment:
+      - NODE_ENV=production
+```
+
+然后使用Docker Compose启动：
+```bash
+docker-compose up -d
+```
+
+##### 持久化配置文件说明
+- 配置文件存储在容器的`/app/config`目录下
+- 通过挂载本地目录到`/app/config`，可以持久化存储配置
+- 首次挂载时，容器会自动在挂载目录中创建默认配置文件
+- 重启或重建容器后，配置将通过挂载的卷自动恢复
+- 您可以直接编辑本地挂载目录中的配置文件进行修改
+
 #### 容器内配置说明
 - 无论是从Docker Hub拉取还是本地构建的容器，启动时都会自动初始化应用环境
 - 容器内预配置了必要的应用文件和默认配置
-- 默认配置文件在容器内自动创建，包含默认的管理员账号和基础配置
-- 配置文件和数据仅保存在容器内，容器删除后数据会丢失
-- 如需使用自定义配置，可通过Web管理界面进行设置
+- 默认配置文件在容器内自动创建在`/app/config`目录，包含默认的管理员账号和基础配置
+- 未使用持久化配置时，配置文件和数据仅保存在容器内，容器删除后数据会丢失
+- 如需使用自定义配置，可通过Web管理界面进行设置或直接编辑挂载的配置文件
 
 #### 访问应用
 1. 构建并运行容器后，访问：http://localhost:3000
@@ -127,15 +180,15 @@ services:
 3. 首次登录后请修改密码
 
 #### 注意事项
-- 如需持久化保存数据，请考虑使用Docker卷（不在本配置范围内）
+- 推荐使用持久化配置文件方式，确保数据不会在容器删除后丢失
 - 从Docker Hub拉取的镜像已经预配置，无需额外的网络连接
 - 使用本地构建方式时，确保容器内的Git可以访问GitHub（可能需要配置网络代理）
 - 无论使用哪种方式，都可以通过Web界面进行配置和管理
 
 ### 配置文件说明
 
-- `config.json`：签到配置文件，包含签到时间和账户信息
-- `admin_config.json`：管理员账户配置文件
+- `config/config.json`：签到配置文件，包含签到时间和账户信息（Docker容器内路径为`/app/config/config.json`）
+- `config/admin_config.json`：管理员账户配置文件（Docker容器内路径为`/app/config/admin_config.json`）
 
 示例配置：
 ```json
@@ -192,9 +245,9 @@ docker-compose logs -f
 
 ## 配置方法
 
-1. 首次运行脚本会自动生成默认配置文件 `config.json`
+1. 首次运行脚本会自动生成默认配置文件到 `config/config.json` 和 `config/admin_config.json`
 
-2. 编辑 `config.json` 文件，填入必要的信息
+2. 编辑 `config/config.json` 文件，填入必要的信息
 
 ## 配置说明
 

@@ -3,7 +3,7 @@ const schedule = require('node-schedule');
 const { signin } = require('./signin.js');
 const fs = require("fs");
 const path = require("path");
-const configPath = path.join(__dirname, "./config.json");
+const configPath = path.join(__dirname, "./config/config.json");
 
 // 在独立进程中启动web服务器
 function startWebServer() {
