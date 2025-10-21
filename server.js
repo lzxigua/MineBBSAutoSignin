@@ -31,8 +31,8 @@ app.use(session({
 }));
 
 // 管理员用户配置文件路径
-const adminConfigPath = path.join(__dirname, 'admin_config.json');
-const configPath = path.join(__dirname, 'config.json');
+const adminConfigPath = path.join(__dirname, 'config/admin_config.json');
+const configPath = path.join(__dirname, 'config/config.json');
 
 // 初始化管理员配置
 function initAdminConfig() {
@@ -240,7 +240,7 @@ app.post('/set-time', isAuthenticated, (req, res) => {
 // 路由 - 手动执行签到
 app.post('/manual-signin', isAuthenticated, async (req, res) => {
     try {
-        await signin.signin();
+        await signin();
         res.redirect('/?message=手动签到执行成功');
     } catch (error) {
         res.redirect('/?error=手动签到执行失败: ' + error.message);

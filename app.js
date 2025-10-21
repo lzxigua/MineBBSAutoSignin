@@ -1,13 +1,21 @@
 // 引入必要的模块
 const schedule = require('node-schedule');
-const { signin } = require('./signin.js');
+const signin = require('./signin.js');
 const fs = require("fs");
 const path = require("path");
-const configPath = path.join(__dirname, "./config.json");
+const configPath = path.join(__dirname, "./config/config.json");
 
-// 读取配置
+// 读取配置文件
 function readConfig() {
+    
     try {
+        //不存在配置文件创建配置文件
+        if (!fs.existsSync(configPath)) {
+            fs.writeFileSync(configPath, JSON.stringify({
+                executeTime: '08:00:00',
+                accounts: []
+            }, null, 2));
+        }
         const raw = fs.readFileSync(configPath);
         return JSON.parse(raw);
     } catch (error) {
