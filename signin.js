@@ -4,6 +4,7 @@ const { CookieJar } = require('tough-cookie');
 const fs = require('fs');
 const path = require('path');
 
+
 const configPath = path.join(__dirname, 'config.json');
 
 // 读取配置
@@ -14,7 +15,7 @@ function readConfig() {
     } catch (error) {
         console.error('读取配置文件失败，将创建默认配置:', error.message);
         const defaultConfig = {
-
+            "executeTime": "08:00:00",
             "accounts": [
                 {
                     "name": "账户1",

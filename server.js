@@ -252,7 +252,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Web管理界面已启动，访问 http://localhost:${PORT} 进行管理`);
     console.log('默认账号: admin, 默认密码: admin123 (请首次登录后修改)');
-    main();
+    // 不再调用main()，避免循环引用，main()将在app.js中调用
 });
 
 module.exports = app;
