@@ -240,7 +240,7 @@ app.post('/set-time', isAuthenticated, (req, res) => {
 // 路由 - 手动执行签到
 app.post('/manual-signin', isAuthenticated, async (req, res) => {
     try {
-        await signin.signin();
+        await signin();
         res.redirect('/?message=手动签到执行成功');
     } catch (error) {
         res.redirect('/?error=手动签到执行失败: ' + error.message);
