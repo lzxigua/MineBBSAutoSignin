@@ -31,8 +31,8 @@ app.use(session({
 }));
 
 // 管理员用户配置文件路径
-const adminConfigPath = path.join(__dirname, 'admin_config.json');
-const configPath = path.join(__dirname, 'config.json');
+const adminConfigPath = path.join(__dirname, './config/admin_config.json');
+const configPath = path.join(__dirname, './config/config.json');
 
 // 初始化管理员配置
 function initAdminConfig() {

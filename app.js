@@ -3,7 +3,7 @@ const schedule = require('node-schedule');
 const signin = require('./signin.js');
 const fs = require("fs");
 const path = require("path");
-const configPath = path.join(__dirname, "./config.json");
+const configPath = path.join(__dirname, "./config/config.json");
 
 // 读取配置
 function readConfig() {
@@ -11,8 +11,25 @@ function readConfig() {
         const raw = fs.readFileSync(configPath);
         return JSON.parse(raw);
     } catch (error) {
-        console.error('读取配置文件失败:', error.message);
-        process.exit(1);
+        console.error('读取配置文件失败，将创建默认配置:', error.message);
+        const defaultConfig = {
+            "executeTime": "08:00:00",
+            "accounts": [
+                {
+                    "name": "账户1",
+                    "cookies": "在这里填入你的cookie",
+                    "csrfToken": "在这里填入页面中的csrf token"
+                },
+                {
+                    "name": "账户2",
+                    "cookies": "在这里填入你的cookie",
+                    "csrfToken": "在这里填入页面中的csrf token"
+                }
+            ]
+        };
+        fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
+        const raw = fs.readFileSync(configPath);
+        return JSON.parse(raw);
     }
 }
 
@@ -58,7 +75,6 @@ async function main() {
         
         // 程序持续运行
         console.log('定时任务已启动，程序将持续运行...');
-        console.log('按 Ctrl+C 退出程序');
         
         // 处理程序退出
         process.on('SIGINT', () => {
@@ -71,6 +87,11 @@ async function main() {
     } catch (error) {
         console.error('程序启动失败:', error);
         process.exit(1);
+    }
+    try {
+        require('./server.js');
+    } catch (error) {
+        console.error('web管理界面启动失败:', error);
     }
 }
 
