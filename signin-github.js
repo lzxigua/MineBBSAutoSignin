@@ -110,9 +110,35 @@ async function checkSigninStatus(axiosInstance, maxRetries = 3) {
             console.log('[状态检查] 正在检查签到状态...');
             const response = await axiosInstance.get('https://www.minebbs.com/');
 
-            // 检查是否已签到
-            const isSigned = response.data.includes('今日签到已完成') ||
-                !response.data.includes('今日尚未签到');
+            // 调试输出：检查页面关键内容
+            const hasSignedInText = response.data.includes('今日签到已完成');
+            const hasNotSignedInText = response.data.includes('今日尚未签到');
+            const hasDailySigninText = response.data.includes('每日签到');
+            
+            console.log('[状态检查] === 页面内容分析 ===');
+            console.log(`[状态检查] 包含"每日签到": ${hasDailySigninText}`);
+            console.log(`[状态检查] 包含"今日签到已完成": ${hasSignedInText}`);
+            console.log(`[状态检查] 包含"今日尚未签到": ${hasNotSignedInText}`);
+            
+            // 改进的判断逻辑：
+            // 1. 如果明确包含"今日签到已完成"，说明已签到
+            // 2. 如果包含"每日签到"和"今日尚未签到"，说明是签到按钮页面，即未签到
+            // 3. 如果两个关键词都没有，可能是页面结构变化或未登录，保守判断为未签到
+            let isSigned = false;
+            if (hasSignedInText) {
+                isSigned = true;
+                console.log('[状态检查] 检测到"今日签到已完成"，判断为已签到');
+            } else if (hasDailySigninText && hasNotSignedInText) {
+                isSigned = false;
+                console.log('[状态检查] 检测到"每日签到"和"今日尚未签到"，判断为未签到');
+            } else {
+                console.log('[状态检查] 警告：无法明确判断签到状态，默认判断为未签到');
+                console.log('[状态检查] 可能原因：Cookie 失效、页面结构变化、或未登录');
+                isSigned = false;
+            }
+            
+            console.log(`[状态检查] 最终判断结果：${isSigned ? '已签到' : '未签到'}`);
+            console.log('[状态检查] === 分析结束 ===');
 
             // 提取最新的 csrf token（如果页面中有的话）
             const csrfMatch = response.data.match(/data-csrf="([^,]+),([^\"]+)"/);
