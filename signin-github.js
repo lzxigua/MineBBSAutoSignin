@@ -69,10 +69,8 @@ function parseCookies(cookieString) {
 function createAxiosInstance(config) {
     const jar = new CookieJar();
     
-    // 构建 Cookie 字符串
-    let cookieString = '';
+    // 设置 cookie 到 CookieJar
     if (config.cookies) {
-        cookieString = config.cookies;
         const cookies = parseCookies(config.cookies);
         console.log(`[Cookie] 准备设置 ${Object.keys(cookies).length} 个 Cookie`);
         
@@ -103,12 +101,10 @@ function createAxiosInstance(config) {
             'Sec-Fetch-Mode': 'navigate',
             'Sec-Fetch-User': '?1',
             'Sec-Fetch-Dest': 'document',
-            'Cache-Control': 'max-age=0',
-            // 直接设置 Cookie 头
-            ...(cookieString ? { 'Cookie': cookieString } : {})
+            'Cache-Control': 'max-age=0'
         },
         timeout: 30000,
-        maxRedirects: 5,
+        maxRedirects: 10,
         validateStatus: function (status) {
             return status >= 200 && status < 300;
         }
