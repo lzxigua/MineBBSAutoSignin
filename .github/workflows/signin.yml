@@ -10,7 +10,7 @@ on:
 
 jobs:
   signin:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     
     steps:
       - name: 检出仓库代码
