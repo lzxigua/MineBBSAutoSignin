@@ -27,7 +27,8 @@ jobs:
 
       - name: 添加 hosts 记录
         run: |
-         ping -c 3 uapis.cn
+         curl 'https://uapis.cn/api/v1/network/dns?domain=www.minebbs.com&type=A' \
+          -H 'Authorization: Bearer uapi-fgiq70zmhhU4R9y9mZ6fo6Ka9izxEGqhXOsYg56i'
          sudo echo "117.163.57.233 www.minebbs.com" | sudo tee -a /etc/hosts
 
       - name: 执行自动签到
