@@ -31,4 +31,6 @@ jobs:
           MINEBBS_COOKIES: ${{ secrets.MINEBBS_COOKIES }}
           MINEBBS_CSRF_TOKEN: ${{ secrets.MINEBBS_CSRF_TOKEN }}
           MINEBBS_ACCOUNT_NAME: ${{ secrets.MINEBBS_ACCOUNT_NAME || 'Github Actions 账户' }}
+          # 跳过随机延迟（测试时使用，生产环境建议设为 false 或不设置）
+          MINEBBS_SKIP_DELAY: ${{ secrets.MINEBBS_SKIP_DELAY || 'false' }}
         run: node signin-github.js

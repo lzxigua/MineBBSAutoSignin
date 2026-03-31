@@ -11,6 +11,8 @@ const { CookieJar } = require('tough-cookie');
 const MINEBBS_COOKIES = process.env.MINEBBS_COOKIES;
 const MINEBBS_CSRF_TOKEN = process.env.MINEBBS_CSRF_TOKEN;
 const MINEBBS_ACCOUNT_NAME = process.env.MINEBBS_ACCOUNT_NAME || 'Github Actions 账户';
+// 跳过随机延迟的标志（用于测试）
+const SKIP_RANDOM_DELAY = process.env.MINEBBS_SKIP_DELAY === 'true';
 
 /**
  * 生成随机延迟时间（1-5 分钟）
@@ -172,11 +174,15 @@ async function main() {
     }
 
     try {
-        // 执行随机延迟
-        const delayTime = getRandomDelay();
-        console.log(`[随机延迟] 将在 ${delayTime / 1000}秒 (${Math.floor(delayTime / 60000)}分${Math.floor((delayTime % 60000) / 1000)}秒) 后开始签到...`);
-        await delay(delayTime);
-        console.log('[随机延迟] 延迟结束，开始执行签到');
+        // 执行随机延迟（如果未设置跳过）
+        if (SKIP_RANDOM_DELAY) {
+            console.log('[跳过延迟] 检测到 MINEBBS_SKIP_DELAY=true，跳过随机延迟');
+        } else {
+            const delayTime = getRandomDelay();
+            console.log(`[随机延迟] 将在 ${delayTime / 1000}秒 (${Math.floor(delayTime / 60000)}分${Math.floor((delayTime % 60000) / 1000)}秒) 后开始签到...`);
+            await delay(delayTime);
+            console.log('[随机延迟] 延迟结束，开始执行签到');
+        }
 
         // 创建账户对象
         const account = {

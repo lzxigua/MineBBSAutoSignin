@@ -119,6 +119,7 @@ crontab -e
 - `MINEBBS_COOKIES` (必填): 完整的 Cookie 字符串
 - `MINEBBS_CSRF_TOKEN` (必填): CSRF Token
 - `MINEBBS_ACCOUNT_NAME` (可选): 账户名称，默认为 "Github Actions 账户"
+- `MINEBBS_SKIP_DELAY` (可选): 是否跳过随机延迟，设置为 `true` 可跳过 1-5 分钟延迟（用于测试），默认为 `false`
 
 ### 获取 Cookie 和 CSRF Token 的方法
 

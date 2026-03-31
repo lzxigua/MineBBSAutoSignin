@@ -41,6 +41,18 @@
 
 默认值：`Github Actions 账户`
 
+#### MINEBBS_SKIP_DELAY (可选)
+```
+是否跳过随机延迟（用于测试）
+```
+值：`true` 或 `false`
+
+默认值：`false`
+
+**说明**：
+- 设置为 `true` 时，签到前不会执行 1-5 分钟的随机延迟
+- 建议在测试配置时使用，生产环境请设置为 `false` 或不设置此 Secret
+
 ### 3. 启用 Github Actions
 
 1. 确保你的仓库已启用 Github Actions
