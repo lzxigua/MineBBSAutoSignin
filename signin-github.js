@@ -35,6 +35,17 @@ function delay(ms) {
 }
 
 /**
+ * 带重试的延迟函数（用于重试机制中的间隔）
+ * @param {number} attempt 当前重试次数
+ * @returns {Promise}
+ */
+function retryDelay(attempt) {
+    // 指数退避：第 1 次重试等待 2 秒，第 2 次 4 秒，第 3 次 8 秒
+    const delayTime = Math.min(2000 * Math.pow(2, attempt), 10000);
+    return delay(delayTime);
+}
+
+/**
  * 解析 cookie 字符串为对象
  * @param {string} cookieString cookie 字符串
  * @returns {Object} cookie 对象
@@ -82,71 +93,101 @@ function createAxiosInstance(config) {
 }
 
 /**
- * 检查是否已经签到
+ * 检查是否已经签到（带重试）
  * @param {AxiosInstance} axiosInstance axios 实例
+ * @param {number} maxRetries 最大重试次数
  * @returns {Promise<Object>} 签到状态和 csrf token
  */
-async function checkSigninStatus(axiosInstance) {
-    try {
-        console.log('[状态检查] 正在检查签到状态...');
-        const response = await axiosInstance.get('https://www.minebbs.com/');
+async function checkSigninStatus(axiosInstance, maxRetries = 3) {
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            if (attempt > 0) {
+                console.log(`[状态检查] 第 ${attempt} 次重试...`);
+                await retryDelay(attempt);
+            }
+            console.log('[状态检查] 正在检查签到状态...');
+            const response = await axiosInstance.get('https://www.minebbs.com/');
 
-        // 检查是否已签到
-        const isSigned = response.data.includes('今日签到已完成') ||
-            !response.data.includes('今日尚未签到');
+            // 检查是否已签到
+            const isSigned = response.data.includes('今日签到已完成') ||
+                !response.data.includes('今日尚未签到');
 
-        // 提取最新的 csrf token（如果页面中有的话）
-        const csrfMatch = response.data.match(/data-csrf="([^,]+),([^\"]+)"/);
-        let csrfToken = null;
-        if (csrfMatch && csrfMatch.length >= 3) {
-            csrfToken = `${csrfMatch[1]},${csrfMatch[2]}`;
+            // 提取最新的 csrf token（如果页面中有的话）
+            const csrfMatch = response.data.match(/data-csrf="([^,]+),([^\"]+)"/);
+            let csrfToken = null;
+            if (csrfMatch && csrfMatch.length >= 3) {
+                csrfToken = `${csrfMatch[1]},${csrfMatch[2]}`;
+            }
+
+            if (attempt > 0) {
+                console.log('[状态检查] 重试成功');
+            }
+            return { isSigned, csrfToken };
+        } catch (error) {
+            lastError = error;
+            console.error(`[状态检查] 检查失败 (尝试 ${attempt + 1}/${maxRetries}):`, error.message);
         }
-
-        return { isSigned, csrfToken };
-    } catch (error) {
-        console.error('[状态检查] 检查签到状态失败:', error.message);
-        return { isSigned: false, csrfToken: null };
     }
+    
+    console.error('[状态检查] 达到最大重试次数，放弃检查');
+    return { isSigned: false, csrfToken: null };
 }
 
 /**
- * 执行签到
+ * 执行签到（带重试）
  * @param {AxiosInstance} axiosInstance axios 实例
  * @param {Object} account 账户信息
+ * @param {number} maxRetries 最大重试次数
  * @returns {Promise<Object>} 签到结果
  */
-async function performSignin(axiosInstance, account) {
-    try {
-        console.log('[执行签到] 正在执行签到操作...');
-        const csrfToken = account.csrfToken;
-        if (!csrfToken) {
-            console.error('[执行签到] CSRF Token 缺失，无法执行签到');
-            return { success: false, message: 'CSRF Token 缺失' };
-        }
-
-        const payload = new URLSearchParams();
-        payload.append('_xfToken', csrfToken);
-        payload.append('currency_ids[]', '1');
-        payload.append('currency_ids[]', '5');
-
-        const response = await axiosInstance.post('https://www.minebbs.com/credits/clock',
-            payload.toString(), {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+async function performSignin(axiosInstance, account, maxRetries = 3) {
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            if (attempt > 0) {
+                console.log(`[执行签到] 第 ${attempt} 次重试...`);
+                await retryDelay(attempt);
             }
-        });
+            console.log('[执行签到] 正在执行签到操作...');
+            const csrfToken = account.csrfToken;
+            if (!csrfToken) {
+                console.error('[执行签到] CSRF Token 缺失，无法执行签到');
+                return { success: false, message: 'CSRF Token 缺失' };
+            }
 
-        // 检查签到是否成功
-        const success = response.status === 200 &&
-            (response.data.includes('签到成功') ||
-                response.data.includes('今日签到已完成') ||
-                response.data.includes('已签到'));
+            const payload = new URLSearchParams();
+            payload.append('_xfToken', csrfToken);
+            payload.append('currency_ids[]', '1');
+            payload.append('currency_ids[]', '5');
 
-        return { success, message: success ? '签到成功！' : '签到失败，请检查配置' };
-    } catch (error) {
-        console.error('[执行签到] 签到请求失败:', error.message);
-        return { success: false, message: error.message };
+            const response = await axiosInstance.post('https://www.minebbs.com/credits/clock',
+                payload.toString(), {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            });
+
+            // 检查签到是否成功
+            const success = response.status === 200 &&
+                (response.data.includes('签到成功') ||
+                    response.data.includes('今日签到已完成') ||
+                    response.data.includes('已签到'));
+
+            if (attempt > 0) {
+                console.log('[执行签到] 重试成功');
+            }
+            return { success, message: success ? '签到成功！' : '签到失败，请检查配置' };
+        } catch (error) {
+            lastError = error;
+            console.error(`[执行签到] 签到失败 (尝试 ${attempt + 1}/${maxRetries}):`, error.message);
+        }
     }
+    
+    console.error('[执行签到] 达到最大重试次数，放弃签到');
+    return { success: false, message: lastError ? lastError.message : '未知错误' };
 }
 
 /**
@@ -194,8 +235,8 @@ async function main() {
         // 创建 axios 实例
         const axiosInstance = createAxiosInstance(account);
 
-        // 检查签到状态
-        const { isSigned, csrfToken } = await checkSigninStatus(axiosInstance);
+        // 检查签到状态（带重试）
+        const { isSigned, csrfToken } = await checkSigninStatus(axiosInstance, 3);
 
         // 如果有新的 csrf token，更新环境变量（但无法持久化）
         if (csrfToken) {
@@ -207,12 +248,13 @@ async function main() {
             console.log('[签到状态] 今天已经签到过了，无需重复签到');
             console.log('[完成] 签到流程结束');
         } else {
-            const { success, message } = await performSignin(axiosInstance, account);
+            // 执行签到（带重试）
+            const { success, message } = await performSignin(axiosInstance, account, 3);
             console.log(`[签到结果] ${message}`);
             
-            // 再次检查签到状态，确认是否成功
+            // 再次检查签到状态，确认是否成功（带重试）
             if (success) {
-                const { isSigned: newStatus } = await checkSigninStatus(axiosInstance);
+                const { isSigned: newStatus } = await checkSigninStatus(axiosInstance, 3);
                 if (newStatus) {
                     console.log('[签到确认] 确认签到成功！');
                     console.log('[完成] 签到流程结束');
