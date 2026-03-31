@@ -190,16 +190,34 @@ async function performSignin(axiosInstance, account, maxRetries = 3) {
                 }
             });
 
+            // 调试输出：服务器响应
+            console.log('[执行签到] 服务器响应状态码:', response.status);
+            console.log('[执行签到] 服务器响应类型:', typeof response.data);
+            
             // 检查签到是否成功
-            const success = response.status === 200 &&
-                (response.data.includes('签到成功') ||
-                    response.data.includes('今日签到已完成') ||
-                    response.data.includes('已签到'));
+            const hasSignInSuccess = response.data.includes('签到成功');
+            const hasSignInComplete = response.data.includes('今日签到已完成');
+            const hasSignInDone = response.data.includes('已签到');
+            
+            console.log('[执行签到] 响应内容分析:');
+            console.log(`  - 包含"签到成功": ${hasSignInSuccess}`);
+            console.log(`  - 包含"今日签到已完成": ${hasSignInComplete}`);
+            console.log(`  - 包含"已签到": ${hasSignInDone}`);
+            
+            const success = response.status === 200 && (hasSignInSuccess || hasSignInComplete || hasSignInDone);
+            
+            if (!success) {
+                console.error('[执行签到] 签到失败，服务器响应内容:');
+                // 截取前 500 个字符作为调试信息
+                const preview = typeof response.data === 'string' ? 
+                    response.data.substring(0, 500) : JSON.stringify(response.data).substring(0, 500);
+                console.error(preview);
+            }
 
             if (attempt > 0) {
                 console.log('[执行签到] 重试成功');
             }
-            return { success, message: success ? '签到成功！' : '签到失败，请检查配置' };
+            return { success, message: success ? '签到成功！' : '签到失败，请查看上方详细错误信息' };
         } catch (error) {
             lastError = error;
             console.error(`[执行签到] 签到失败 (尝试 ${attempt + 1}/${maxRetries}):`, error.message);
