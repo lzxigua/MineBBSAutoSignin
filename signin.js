@@ -16,17 +16,22 @@ function readConfig() {
         const defaultConfig = {
             "accounts": [
                 {
-                    "name": "账户1",
-                    "cookies": "在这里填入你的cookie",
-                    "csrfToken": "在这里填入页面中的csrf token"
+                    "name": "账户 1",
+                    "cookies": "在这里填入你的 cookie",
+                    "csrfToken": "在这里填入页面中的 csrf token"
                 },
                 {
-                    "name": "账户2",
-                    "cookies": "在这里填入你的cookie",
-                    "csrfToken": "在这里填入页面中的csrf token"
+                    "name": "账户 2",
+                    "cookies": "在这里填入你的 cookie",
+                    "csrfToken": "在这里填入页面中的 csrf token"
                 }
             ]
         };
+        // 确保 config 目录存在
+        const configDir = path.dirname(configPath);
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
         fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
         const config = fs.readFileSync(configPath, 'utf8');
         return JSON.parse(config);
@@ -134,54 +139,108 @@ async function performSignin(axiosInstance, account) {
     }
 }
 
-// 主函数
-async function signin() {
-    console.log('=== MineBBS自动签到脚本 ===');
+/**
+ * 生成随机延迟时间（1-5 分钟）
+ * @returns {number} 延迟时间（毫秒）
+ */
+function getRandomDelay() {
+    const minDelay = 60 * 1000; // 1 分钟
+    const maxDelay = 5 * 60 * 1000; // 5 分钟
+    const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+    return delay;
+}
+
+/**
+ * 延迟执行函数
+ * @param {number} ms 延迟毫秒数
+ * @returns {Promise}
+ */
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * 主签到函数
+ * @param {Object} options 可选配置
+ * @param {boolean} options.skipRandomDelay 是否跳过随机延迟（用于 WebUI 手动触发）
+ * @param {Object} options.singleAccount 单账户模式下的账户信息（用于 Github Actions）
+ */
+async function signin(options = {}) {
+    const { skipRandomDelay = false, singleAccount = null } = options;
+    
+    console.log('=== MineBBS 自动签到脚本 ===');
+    console.log(`执行时间：${new Date().toLocaleString('zh-CN')}`);
 
     try {
         // 读取配置
         const config = readConfig();
-        const accounts = config.accounts || [];
+        let accounts = config.accounts || [];
+        
+        // 单账户模式（用于 Github Actions）
+        if (singleAccount) {
+            accounts = [singleAccount];
+            console.log('运行模式：单账户模式 (Github Actions)');
+        } else {
+            console.log('运行模式：多账户模式 (本地部署)');
+        }
+
+        // 检查是否有账户
+        if (accounts.length === 0) {
+            console.warn('警告：没有配置任何账户');
+            return;
+        }
 
         // 遍历每个账户
-        for (const account of accounts) {
-            console.log(`\n=== 处理账户 ${account.name} ===`);
-            // 创建axios实例
+        for (let i = 0; i < accounts.length; i++) {
+            const account = accounts[i];
+            console.log(`\n=== 处理账户 ${account.name} (${i + 1}/${accounts.length}) ===`);
+            
+            // 执行签到前随机延迟（跳过首次立即执行的情况）
+            if (!skipRandomDelay && i === 0) {
+                const delayTime = getRandomDelay();
+                console.log(`[随机延迟] 将在 ${delayTime / 1000}秒 (${Math.floor(delayTime / 60000)}分${Math.floor((delayTime % 60000) / 1000)}秒) 后开始签到...`);
+                await delay(delayTime);
+                console.log('[随机延迟] 延迟结束，开始执行签到');
+            }
+            
+            // 创建 axios 实例
             const axiosInstance = createAxiosInstance(account);
             // 检查签到状态
             const { isSigned, csrfToken } = await checkSigninStatus(axiosInstance);
 
-            // 如果有新的csrf token，使用新的
+            // 如果有新的 csrf token，使用新的
             if (csrfToken) {
                 account.csrfToken = csrfToken;
             }
 
             // 处理签到逻辑
             if (isSigned) {
-                console.log('今天已经签到过了，无需重复签到');
+                console.log('[签到状态] 今天已经签到过了，无需重复签到');
             } else {
                 const { success, message } = await performSignin(axiosInstance, account);
-                console.log(message);
+                console.log(`[签到结果] ${message}`);
                 // 再次检查签到状态，确认是否成功
                 if (success) {
                     const { isSigned: newStatus } = await checkSigninStatus(axiosInstance);
                     if (newStatus) {
-                        console.log('确认签到成功！');
+                        console.log('[签到确认] 确认签到成功！');
+                    } else {
+                        console.error('[签到确认] 警告：签到响应成功但状态未更新');
                     }
                 }
             }
-            // 最后一个账户不等待
-            if (account === accounts[accounts.length - 1]) {
-                continue;
-            }
-            // 随机等待30-60秒 
-            const randomWait = Math.floor(Math.random() * 30000) + 30000;
-            console.log(`等待${randomWait / 1000}秒后继续...`);
-            await new Promise(resolve => setTimeout(resolve, randomWait));
             
+            // 账户间延迟（最后一个账户不等待）
+            if (i < accounts.length - 1) {
+                const randomWait = Math.floor(Math.random() * 30000) + 30000;
+                console.log(`[账户间隔] 等待${randomWait / 1000}秒后继续下一个账户...`);
+                await delay(randomWait);
+            }
         }
     } catch (error) {
-        console.error('脚本执行出错:', error);
+        console.error('[严重错误] 脚本执行出错:', error.message);
+        console.error('错误堆栈:', error.stack);
+        throw error;
     }
     console.log('=== 脚本执行完毕 ===\n');
 }

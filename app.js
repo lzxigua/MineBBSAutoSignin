@@ -16,17 +16,22 @@ function readConfig() {
             "executeTime": "08:00:00",
             "accounts": [
                 {
-                    "name": "账户1",
-                    "cookies": "在这里填入你的cookie",
-                    "csrfToken": "在这里填入页面中的csrf token"
+                    "name": "账户 1",
+                    "cookies": "在这里填入你的 cookie",
+                    "csrfToken": "在这里填入页面中的 csrf token"
                 },
                 {
-                    "name": "账户2",
-                    "cookies": "在这里填入你的cookie",
-                    "csrfToken": "在这里填入页面中的csrf token"
+                    "name": "账户 2",
+                    "cookies": "在这里填入你的 cookie",
+                    "csrfToken": "在这里填入页面中的 csrf token"
                 }
             ]
         };
+        // 确保 config 目录存在
+        const configDir = path.dirname(configPath);
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
         fs.writeFileSync(configPath, JSON.stringify(defaultConfig, null, 2));
         const raw = fs.readFileSync(configPath);
         return JSON.parse(raw);
@@ -63,7 +68,7 @@ function startSchedule() {
 // 立即执行一次签到（可选）
 async function runOnce() {
     console.log('立即执行签到任务...');
-    await signin();
+    await signin({ skipRandomDelay: true });
     console.log('立即签到完成');
 }
 

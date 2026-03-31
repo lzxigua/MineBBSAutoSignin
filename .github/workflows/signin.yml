@@ -1,0 +1,34 @@
+name: MineBBS Daily Signin
+
+on:
+  # 每天 UTC 时间 00:00 运行（北京时间 08:00）
+  schedule:
+    - cron: '0 0 * * *'
+  
+  # 允许手动触发工作流
+  workflow_dispatch:
+
+jobs:
+  signin:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 检出仓库代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Node.js 环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 执行自动签到
+        env:
+          # 从 Github Secrets 获取用户凭据
+          MINEBBS_COOKIES: ${{ secrets.MINEBBS_COOKIES }}
+          MINEBBS_CSRF_TOKEN: ${{ secrets.MINEBBS_CSRF_TOKEN }}
+          MINEBBS_ACCOUNT_NAME: ${{ secrets.MINEBBS_ACCOUNT_NAME || 'Github Actions 账户' }}
+        run: node signin-github.js

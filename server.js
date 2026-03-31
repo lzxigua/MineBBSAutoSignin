@@ -61,6 +61,11 @@ function readConfig() {
         return JSON.parse(raw);
     } catch (error) {
         console.error('读取配置文件失败:', error.message);
+        // 确保 config 目录存在
+        const configDir = path.dirname(configPath);
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
         const defaultConfig = {
             executeTime: '08:00:00',
             accounts: []
@@ -240,10 +245,10 @@ app.post('/set-time', isAuthenticated, (req, res) => {
 // 路由 - 手动执行签到
 app.post('/manual-signin', isAuthenticated, async (req, res) => {
     try {
-        await signin();
+        await signin({ skipRandomDelay: true });
         res.redirect('/?message=手动签到执行成功');
     } catch (error) {
-        res.redirect('/?error=手动签到执行失败: ' + error.message);
+        res.redirect('/?error=手动签到执行失败：' + error.message);
     }
 });
 

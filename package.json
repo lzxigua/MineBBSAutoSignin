@@ -1,12 +1,13 @@
 {
   "name": "minebbs-auto-signin",
   "version": "1.0.0",
-  "description": "MineBBS我的世界中文论坛自动签到脚本",
+  "description": "MineBBS 我的世界中文论坛自动签到脚本",
   "main": "signin.js",
   "scripts": {
     "start": "node app.js",
     "signin": "node signin.js",
-    "web": "node server.js"
+    "web": "node server.js",
+    "signin:github": "node signin-github.js"
   },
   "author": "",
   "license": "MIT",
