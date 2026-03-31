@@ -68,26 +68,51 @@ function parseCookies(cookieString) {
  */
 function createAxiosInstance(config) {
     const jar = new CookieJar();
+    
+    // 构建 Cookie 字符串
+    let cookieString = '';
+    if (config.cookies) {
+        cookieString = config.cookies;
+        const cookies = parseCookies(config.cookies);
+        console.log(`[Cookie] 准备设置 ${Object.keys(cookies).length} 个 Cookie`);
+        
+        // 设置到 CookieJar
+        Object.keys(cookies).forEach(key => {
+            try {
+                jar.setCookie(`${key}=${cookies[key]}`, 'https://www.minebbs.com');
+            } catch (err) {
+                console.error(`[Cookie] 设置 Cookie 失败 ${key}:`, err.message);
+            }
+        });
+    }
+    
     const axiosInstance = wrapper(axios.create({
         jar,
         withCredentials: true,
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9',
             'Referer': 'https://www.minebbs.com/',
-            'X-Requested-With': 'XMLHttpRequest'
+            'Origin': 'https://www.minebbs.com',
+            'Sec-Ch-Ua': '"Not=A?Brand";v="24", "Chromium";v="140"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-User': '?1',
+            'Sec-Fetch-Dest': 'document',
+            'Cache-Control': 'max-age=0',
+            // 直接设置 Cookie 头
+            ...(cookieString ? { 'Cookie': cookieString } : {})
         },
-        timeout: 30000
+        timeout: 30000,
+        maxRedirects: 5,
+        validateStatus: function (status) {
+            return status >= 200 && status < 300;
+        }
     }));
-
-    // 设置 cookie
-    if (config.cookies) {
-        const cookies = parseCookies(config.cookies);
-        Object.keys(cookies).forEach(key => {
-            jar.setCookie(`${key}=${cookies[key]}`, 'https://www.minebbs.com');
-        });
-    }
 
     return axiosInstance;
 }
