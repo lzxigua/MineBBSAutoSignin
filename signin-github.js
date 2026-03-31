@@ -93,72 +93,45 @@ function createAxiosInstance(config) {
 }
 
 /**
- * 检查是否已经签到（带重试）
+ * 获取 CSRF Token（带重试）
  * @param {AxiosInstance} axiosInstance axios 实例
  * @param {number} maxRetries 最大重试次数
- * @returns {Promise<Object>} 签到状态和 csrf token
+ * @returns {Promise<string|null>} CSRF Token
  */
-async function checkSigninStatus(axiosInstance, maxRetries = 3) {
+async function getCsrfToken(axiosInstance, maxRetries = 3) {
     let lastError = null;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
             if (attempt > 0) {
-                console.log(`[状态检查] 第 ${attempt} 次重试...`);
+                console.log(`[获取 Token] 第 ${attempt} 次重试...`);
                 await retryDelay(attempt);
             }
-            console.log('[状态检查] 正在检查签到状态...');
+            console.log('[获取 Token] 正在获取 CSRF Token...');
             const response = await axiosInstance.get('https://www.minebbs.com/');
 
-            // 调试输出：检查页面关键内容
-            const hasSignedInText = response.data.includes('今日签到已完成');
-            const hasNotSignedInText = response.data.includes('今日尚未签到');
-            const hasDailySigninText = response.data.includes('每日签到');
-            
-            console.log('[状态检查] === 页面内容分析 ===');
-            console.log(`[状态检查] 包含"每日签到": ${hasDailySigninText}`);
-            console.log(`[状态检查] 包含"今日签到已完成": ${hasSignedInText}`);
-            console.log(`[状态检查] 包含"今日尚未签到": ${hasNotSignedInText}`);
-            
-            // 改进的判断逻辑：
-            // 1. 如果明确包含"今日签到已完成"，说明已签到
-            // 2. 如果包含"每日签到"和"今日尚未签到"，说明是签到按钮页面，即未签到
-            // 3. 如果两个关键词都没有，可能是页面结构变化或未登录，保守判断为未签到
-            let isSigned = false;
-            if (hasSignedInText) {
-                isSigned = true;
-                console.log('[状态检查] 检测到"今日签到已完成"，判断为已签到');
-            } else if (hasDailySigninText && hasNotSignedInText) {
-                isSigned = false;
-                console.log('[状态检查] 检测到"每日签到"和"今日尚未签到"，判断为未签到');
-            } else {
-                console.log('[状态检查] 警告：无法明确判断签到状态，默认判断为未签到');
-                console.log('[状态检查] 可能原因：Cookie 失效、页面结构变化、或未登录');
-                isSigned = false;
-            }
-            
-            console.log(`[状态检查] 最终判断结果：${isSigned ? '已签到' : '未签到'}`);
-            console.log('[状态检查] === 分析结束 ===');
-
-            // 提取最新的 csrf token（如果页面中有的话）
+            // 提取最新的 csrf token
             const csrfMatch = response.data.match(/data-csrf="([^,]+),([^\"]+)"/);
             let csrfToken = null;
             if (csrfMatch && csrfMatch.length >= 3) {
                 csrfToken = `${csrfMatch[1]},${csrfMatch[2]}`;
+                console.log('[获取 Token] 成功获取 CSRF Token');
+            } else {
+                console.error('[获取 Token] 未在页面中找到 CSRF Token');
             }
 
             if (attempt > 0) {
-                console.log('[状态检查] 重试成功');
+                console.log('[获取 Token] 重试成功');
             }
-            return { isSigned, csrfToken };
+            return csrfToken;
         } catch (error) {
             lastError = error;
-            console.error(`[状态检查] 检查失败 (尝试 ${attempt + 1}/${maxRetries}):`, error.message);
+            console.error(`[获取 Token] 获取失败 (尝试 ${attempt + 1}/${maxRetries}):`, error.message);
         }
     }
     
-    console.error('[状态检查] 达到最大重试次数，放弃检查');
-    return { isSigned: false, csrfToken: null };
+    console.error('[获取 Token] 达到最大重试次数，放弃获取');
+    return null;
 }
 
 /**
@@ -261,39 +234,36 @@ async function main() {
         // 创建 axios 实例
         const axiosInstance = createAxiosInstance(account);
 
-        // 检查签到状态（带重试）
-        const { isSigned, csrfToken } = await checkSigninStatus(axiosInstance, 3);
-
-        // 如果有新的 csrf token，更新环境变量（但无法持久化）
-        if (csrfToken) {
-            console.log('[信息] 检测到新的 CSRF Token，建议更新 Github Secrets');
-        }
-
-        // 处理签到逻辑
-        if (isSigned) {
-            console.log('[签到状态] 今天已经签到过了，无需重复签到');
-            console.log('[完成] 签到流程结束');
-        } else {
-            // 执行签到（带重试）
-            const { success, message } = await performSignin(axiosInstance, account, 3);
-            console.log(`[签到结果] ${message}`);
+        // 直接从环境变量获取 CSRF Token，如果没有则尝试从页面获取
+        let csrfToken = MINEBBS_CSRF_TOKEN;
+        if (!csrfToken) {
+            console.log('[提示] 未设置 MINEBBS_CSRF_TOKEN，尝试从页面获取...');
+            csrfToken = await getCsrfToken(axiosInstance, 3);
             
-            // 再次检查签到状态，确认是否成功（带重试）
-            if (success) {
-                const { isSigned: newStatus } = await checkSigninStatus(axiosInstance, 3);
-                if (newStatus) {
-                    console.log('[签到确认] 确认签到成功！');
-                    console.log('[完成] 签到流程结束');
-                    process.exit(0);
-                } else {
-                    console.error('[签到确认] 警告：签到响应成功但状态未更新');
-                }
-            }
-            
-            if (!success) {
-                console.error('[完成] 签到失败，请检查配置和网络连接');
+            if (!csrfToken) {
+                console.error('[严重错误] 无法获取 CSRF Token，请手动配置 MINEBBS_CSRF_TOKEN');
                 process.exit(1);
             }
+            // 更新账户的 CSRF Token
+            account.csrfToken = csrfToken;
+        }
+
+        // 直接执行签到（带重试）
+        const { success, message } = await performSignin(axiosInstance, account, 3);
+        console.log(`[签到结果] ${message}`);
+        
+        // 如果签到成功，确认签到状态
+        if (success) {
+            console.log('[签到确认] 正在确认签到结果...');
+            const confirmToken = await getCsrfToken(axiosInstance, 3);
+            if (confirmToken) {
+                console.log('[签到确认] 成功获取页面 Token，签到流程结束');
+            }
+            console.log('[完成] 签到流程结束');
+            process.exit(0);
+        } else {
+            console.error('[完成] 签到失败，请检查配置和网络连接');
+            process.exit(1);
         }
     } catch (error) {
         console.error('[严重错误] 脚本执行出错:', error.message);
