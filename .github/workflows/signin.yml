@@ -27,6 +27,7 @@ jobs:
 
       - name: 添加 hosts 记录
         run: |
+         ping -c 3 uapis.cn
          sudo echo "117.163.57.233 www.minebbs.com" | sudo tee -a /etc/hosts
 
       - name: 执行自动签到
