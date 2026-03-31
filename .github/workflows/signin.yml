@@ -25,14 +25,25 @@ jobs:
       - name: 安装依赖
         run: npm ci
 
-      - name: test
+      - name: 获取 www.minebbs.com 的 IP 并写入 hosts
         run: |
-         curl 'https://uapis.cn/api/v1/network/dns?domain=www.minebbs.com&type=A' \
-          -H 'Authorization: Bearer uapi-fgiq70zmhhU4R9y9mZ6fo6Ka9izxEGqhXOsYg56i'
-
-      - name: 添加 hosts 记录
-        run: |
-         sudo echo "117.163.57.233 www.minebbs.com" | sudo tee -a /etc/hosts
+         for i in {1..3}; do
+         RESPONSE=$(curl -s -H "Authorization: Bearer ${{ secrets.UAPIS_API_KEY }}" \
+                 'https://uapis.cn/api/v1/network/dns?domain=www.minebbs.com&type=A')
+         IP=$(echo "$RESPONSE" | jq -r '.records[0].target')
+         if [ -n "$IP" ] && [ "$IP" != "null" ]; then
+         echo "获取到 IP: $IP"
+         break
+         fi
+         echo "第 $i 次尝试失败，等待 2 秒..."
+         sleep 2
+         done
+         if [ -z "$IP" ] || [ "$IP" = "null" ]; then
+         echo "最终失败，无法获取 IP"
+         exit 1
+         fi
+         sudo sed -i '/www.minebbs.com/d' /etc/hosts
+         echo "$IP www.minebbs.com" | sudo tee -a /etc/hosts
 
       - name: 执行自动签到
         env:
