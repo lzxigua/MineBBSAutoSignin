@@ -1,11 +1,12 @@
 /**
  * MineBBS 自动签到脚本 - Github Actions 单用户版本
- * 通过环境变量获取用户凭据，支持单用户签到
+ * 支持雷池 WAF 自动绕过，通过环境变量获取用户凭据
  */
 
 const axios = require('axios');
 const { wrapper } = require('axios-cookiejar-support');
 const { CookieJar } = require('tough-cookie');
+const wafModule = require('./waf-module');
 
 // 从环境变量获取配置
 const MINEBBS_COOKIES = process.env.MINEBBS_COOKIES;
@@ -13,6 +14,10 @@ const MINEBBS_CSRF_TOKEN = process.env.MINEBBS_CSRF_TOKEN;
 const MINEBBS_ACCOUNT_NAME = process.env.MINEBBS_ACCOUNT_NAME || 'Github Actions 账户';
 // 跳过随机延迟的标志（用于测试）
 const SKIP_RANDOM_DELAY = process.env.MINEBBS_SKIP_DELAY === 'true';
+// 是否启用 WAF 检测（默认启用）
+const ENABLE_WAF = process.env.MINEBBS_ENABLE_WAF !== 'false';
+
+const TARGET_URL = 'https://www.minebbs.com/';
 
 /**
  * 生成随机延迟时间（1-5 分钟）
@@ -63,21 +68,21 @@ function parseCookies(cookieString) {
 
 /**
  * 创建带 cookie 的 axios 实例
- * @param {Object} config 配置对象
+ * @param {string} cookieString Cookie 字符串
  * @returns {AxiosInstance}
  */
-function createAxiosInstance(config) {
+function createAxiosInstance(cookieString) {
     const jar = new CookieJar();
     
     // 设置 cookie 到 CookieJar
-    if (config.cookies) {
-        const cookies = parseCookies(config.cookies);
+    if (cookieString) {
+        const cookies = parseCookies(cookieString);
         console.log(`[Cookie] 准备设置 ${Object.keys(cookies).length} 个 Cookie`);
         
         // 设置到 CookieJar
         Object.keys(cookies).forEach(key => {
             try {
-                jar.setCookie(`${key}=${cookies[key]}`, 'https://www.minebbs.com');
+                jar.setCookie(`${key}=${cookies[key]}`, TARGET_URL);
             } catch (err) {
                 console.error(`[Cookie] 设置 Cookie 失败 ${key}:`, err.message);
             }
@@ -91,7 +96,7 @@ function createAxiosInstance(config) {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9',
-            'Referer': 'https://www.minebbs.com/',
+            'Referer': TARGET_URL,
             'Origin': 'https://www.minebbs.com',
             'Sec-Ch-Ua': '"Not=A?Brand";v="24", "Chromium";v="140"',
             'Sec-Ch-Ua-Mobile': '?0',
@@ -129,7 +134,7 @@ async function getCsrfToken(axiosInstance, maxRetries = 3) {
                 await retryDelay(attempt);
             }
             console.log('[获取 Token] 正在获取 CSRF Token...');
-            const response = await axiosInstance.get('https://www.minebbs.com/');
+            const response = await axiosInstance.get(TARGET_URL);
 
             // 提取最新的 csrf token
             const csrfMatch = response.data.match(/data-csrf="([^,]+),([^\"]+)"/);
@@ -156,13 +161,75 @@ async function getCsrfToken(axiosInstance, maxRetries = 3) {
 }
 
 /**
+ * 检查是否已经签到（带重试）
+ * @param {AxiosInstance} axiosInstance axios 实例
+ * @param {number} maxRetries 最大重试次数
+ * @returns {Promise<boolean>} 是否已签到
+ */
+async function checkSigninStatus(axiosInstance, maxRetries = 3) {
+    let lastError = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            if (attempt > 0) {
+                console.log(`[状态检查] 第 ${attempt} 次重试...`);
+                await retryDelay(attempt);
+            }
+            console.log('[状态检查] 正在检查签到状态...');
+            const response = await axiosInstance.get(TARGET_URL);
+
+            // 检查是否已签到
+            const hasSignedInText = response.data.includes('今日签到已完成');
+            const hasNotSignedInText = response.data.includes('今日尚未签到');
+            const hasDailySigninText = response.data.includes('每日签到');
+            
+            console.log('[状态检查] === 页面内容分析 ===');
+            console.log(`[状态检查] 包含"每日签到": ${hasDailySigninText}`);
+            console.log(`[状态检查] 包含"今日签到已完成": ${hasSignedInText}`);
+            console.log(`[状态检查] 包含"今日尚未签到": ${hasNotSignedInText}`);
+            
+            // 判断逻辑：
+            // 1. 如果明确包含"今日签到已完成"，说明已签到
+            // 2. 如果包含"每日签到"和"今日尚未签到"，说明是签到按钮页面，即未签到
+            // 3. 如果两个关键词都没有，可能是页面结构变化或未登录，保守判断为未签到
+            let isSigned = false;
+            if (hasSignedInText) {
+                isSigned = true;
+                console.log('[状态检查] 检测到"今日签到已完成"，判断为已签到');
+            } else if (hasDailySigninText && hasNotSignedInText) {
+                isSigned = false;
+                console.log('[状态检查] 检测到"每日签到"和"今日尚未签到"，判断为未签到');
+            } else {
+                console.log('[状态检查] 警告：无法明确判断签到状态，默认判断为未签到');
+                console.log('[状态检查] 可能原因：Cookie 失效、页面结构变化、或未登录');
+                isSigned = false;
+            }
+            
+            console.log(`[状态检查] 最终判断结果：${isSigned ? '已签到' : '未签到'}`);
+            console.log('[状态检查] === 分析结束 ===');
+
+            if (attempt > 0) {
+                console.log('[状态检查] 重试成功');
+            }
+            return isSigned;
+        } catch (error) {
+            lastError = error;
+            console.error(`[状态检查] 检查失败 (尝试 ${attempt + 1}/${maxRetries}):`, error.message);
+        }
+    }
+    
+    console.error('[状态检查] 达到最大重试次数，放弃检查');
+    return false;
+}
+
+/**
  * 执行签到（带重试）
  * @param {AxiosInstance} axiosInstance axios 实例
- * @param {Object} account 账户信息
+ * @param {string} csrfToken CSRF Token
  * @param {number} maxRetries 最大重试次数
  * @returns {Promise<Object>} 签到结果
  */
-async function performSignin(axiosInstance, account, maxRetries = 3) {
+async function performSignin(axiosInstance, csrfToken, maxRetries = 3) {
     let lastError = null;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -172,7 +239,7 @@ async function performSignin(axiosInstance, account, maxRetries = 3) {
                 await retryDelay(attempt);
             }
             console.log('[执行签到] 正在执行签到操作...');
-            const csrfToken = account.csrfToken;
+            
             if (!csrfToken) {
                 console.error('[执行签到] CSRF Token 缺失，无法执行签到');
                 return { success: false, message: 'CSRF Token 缺失' };
@@ -237,6 +304,7 @@ async function main() {
     console.log('========================================');
     console.log(`执行时间：${new Date().toLocaleString('zh-CN')}`);
     console.log(`账户名称：${MINEBBS_ACCOUNT_NAME}`);
+    console.log(`WAF 检测：${ENABLE_WAF ? '已启用' : '已禁用'}`);
     console.log('========================================');
 
     // 验证必要的环境变量
@@ -253,7 +321,7 @@ async function main() {
     }
 
     try {
-        // 执行随机延迟（如果未设置跳过）
+        // 执行随机延迟
         if (SKIP_RANDOM_DELAY) {
             console.log('[跳过延迟] 检测到 MINEBBS_SKIP_DELAY=true，跳过随机延迟');
         } else {
@@ -263,46 +331,52 @@ async function main() {
             console.log('[随机延迟] 延迟结束，开始执行签到');
         }
 
-        // 创建账户对象
-        const account = {
-            name: MINEBBS_ACCOUNT_NAME,
-            cookies: MINEBBS_COOKIES,
-            csrfToken: MINEBBS_CSRF_TOKEN
-        };
-
-        // 创建 axios 实例
-        const axiosInstance = createAxiosInstance(account);
-
-        // 直接从环境变量获取 CSRF Token，如果没有则尝试从页面获取
-        let csrfToken = MINEBBS_CSRF_TOKEN;
-        if (!csrfToken) {
-            console.log('[提示] 未设置 MINEBBS_CSRF_TOKEN，尝试从页面获取...');
-            csrfToken = await getCsrfToken(axiosInstance, 3);
+        // 处理 WAF
+        let fullCookieString = MINEBBS_COOKIES;
+        
+        if (ENABLE_WAF) {
+            console.log('[WAF] 开始检测 WAF...');
             
-            if (!csrfToken) {
-                console.error('[严重错误] 无法获取 CSRF Token，请手动配置 MINEBBS_CSRF_TOKEN');
-                process.exit(1);
+            // 先检测是否有 WAF
+            const hasWAF = await wafModule.detectWAF(TARGET_URL);
+            
+            if (hasWAF) {
+                console.log('[WAF] 检测到 WAF，开始获取 WAF Cookie...');
+                const userCookies = parseCookies(MINEBBS_COOKIES);
+                fullCookieString = await wafModule.getFullCookieString(TARGET_URL, userCookies);
+                
+                if (!fullCookieString) {
+                    console.error('[WAF] 获取 WAF Cookie 失败，尝试直接使用原始 Cookie');
+                    fullCookieString = MINEBBS_COOKIES;
+                }
+            } else {
+                console.log('[WAF] 未检测到 WAF，使用原始 Cookie');
             }
-            // 更新账户的 CSRF Token
-            account.csrfToken = csrfToken;
         }
 
-        // 直接执行签到（带重试）
-        const { success, message } = await performSignin(axiosInstance, account, 3);
-        console.log(`[签到结果] ${message}`);
-        
-        // 如果签到成功，确认签到状态
-        if (success) {
-            console.log('[签到确认] 正在确认签到结果...');
-            const confirmToken = await getCsrfToken(axiosInstance, 3);
-            if (confirmToken) {
-                console.log('[签到确认] 成功获取页面 Token，签到流程结束');
-            }
+        // 创建 axios 实例
+        const axiosInstance = createAxiosInstance(fullCookieString);
+
+        // 检查签到状态
+        const isSigned = await checkSigninStatus(axiosInstance, 3);
+
+        // 处理签到逻辑
+        if (isSigned) {
+            console.log('[签到状态] 今天已经签到过了，无需重复签到');
             console.log('[完成] 签到流程结束');
             process.exit(0);
         } else {
-            console.error('[完成] 签到失败，请检查配置和网络连接');
-            process.exit(1);
+            // 执行签到
+            const { success, message } = await performSignin(axiosInstance, MINEBBS_CSRF_TOKEN, 3);
+            console.log(`[签到结果] ${message}`);
+            
+            if (success) {
+                console.log('[完成] 签到流程结束');
+                process.exit(0);
+            } else {
+                console.error('[完成] 签到失败，请检查配置和网络连接');
+                process.exit(1);
+            }
         }
     } catch (error) {
         console.error('[严重错误] 脚本执行出错:', error.message);

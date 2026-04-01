@@ -53,6 +53,19 @@
 - 设置为 `true` 时，签到前不会执行 1-5 分钟的随机延迟
 - 建议在测试配置时使用，生产环境请设置为 `false` 或不设置此 Secret
 
+#### MINEBBS_ENABLE_WAF (可选)
+```
+是否启用 WAF 检测
+```
+值：`true` 或 `false`
+
+默认值：`true`
+
+**说明**：
+- 设置为 `true` 时，会自动检测并绕过雷池 WAF
+- 如果检测到 468 状态码，会自动获取 WAF Cookie
+- 如果不需要 WAF 功能，可以设置为 `false`
+
 ### 3. 启用 Github Actions
 
 1. 确保你的仓库已启用 Github Actions
