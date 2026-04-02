@@ -12,21 +12,21 @@
 - **随机延迟机制降低风控风险**
 - **完善的日志记录和错误处理**
 - **本地部署支持多账户 + WebUI 管理**
+- **支持 TOTP 两步验证**
+- **自动 WAF 检测和绕过**
 
 ## 安装步骤
 
 1. 确保你的电脑上已安装 [Node.js](https://nodejs.org/zh-cn/)
-
 2. 克隆本项目到本地
 
 ```bash
-git clone https://github.com/lingran7031/MineBBSAutoSignin.git
+git clone https://github.com/lzxigua/MineBBSAutoSignin.git
 cd MineBBSAutoSignin
 ```
 
-3. 打开命令行工具，进入项目目录
-
-4. 安装依赖包
+1. 打开命令行工具，进入项目目录
+2. 安装依赖包
 
 ```bash
 npm install
@@ -46,19 +46,26 @@ npm install
 
 通过 Github Actions 实现云端自动签到，无需本地服务器。
 
-详细配置请参考：[Github Actions 配置指南](GITHUB_ACTIONS_GUIDE.md)
-
 #### 快速配置
 
 1. 在 Github 仓库 Settings 中配置 Secrets：
-   - `MINEBBS_COOKIES`: 你的论坛 Cookie
-   - `MINEBBS_CSRF_TOKEN`: 你的 CSRF Token
-   - `MINEBBS_ACCOUNT_NAME`: 账户名称（可选）
-
+   - `MINEBBS_EMAIL`: 论坛登录邮箱/用户名（必填）
+   - `MINEBBS_PASSWORD`: 论坛登录密码（必填）
+   - `MINEBBS_TOTP_SECRET`: TOTP 两步验证密钥（可选，开启 2FA 时必填）
+   - `MINEBBS_ACCOUNT_NAME`: 账户名称（可选，默认为 "Github Actions 账户"）
+   - `MINEBBS_SKIP_DELAY`: 是否跳过随机延迟（可选，默认为 false）
+   - `MINEBBS_ENABLE_WAF`: 是否启用 WAF 检测（可选，默认为 true）
 2. 工作流会自动运行：
    - 北京时间每天 08:00 自动执行
    - 支持手动触发
    - 包含 1-5 分钟随机延迟
+
+**优势**：
+
+- ✅ **无需手动获取 Cookie**：自动登录获取最新 Cookie
+- ✅ **无需手动更新 CSRF Token**：每次登录自动获取最新 Token
+- ✅ **支持 TOTP 两步验证**：自动处理 2FA 验证
+- ✅ **Cookie 永不过期**：每次都是新鲜登录获取
 
 ### 方法三：系统定时任务
 
@@ -67,11 +74,8 @@ npm install
 #### Windows 系统
 
 1. 打开任务计划程序
-
 2. 创建基本任务，设置每日运行时间
-
 3. 操作选择"启动程序"
-
 4. 程序或脚本选择 `node.exe`，添加参数为 `signin.js`，起始于为脚本所在目录
 
 #### Linux/Mac 系统
@@ -114,26 +118,27 @@ crontab -e
 
 ### Github Actions 配置
 
-在 Github 仓库的 Settings -> Secrets and variables -> Actions 中配置：
+在 Github 仓库的 Settings -> Secrets and variables -> Actions 中配置以下 Secrets：
 
-- `MINEBBS_COOKIES` (必填): 完整的 Cookie 字符串
-- `MINEBBS_CSRF_TOKEN` (必填): CSRF Token
-- `MINEBBS_ACCOUNT_NAME` (可选): 账户名称，默认为 "Github Actions 账户"
-- `MINEBBS_SKIP_DELAY` (可选): 是否跳过随机延迟，设置为 `true` 可跳过 1-5 分钟延迟（用于测试），默认为 `false`
-- `MINEBBS_ENABLE_WAF` (可选): 是否启用 WAF 检测，设置为 `true` 自动绕过雷池 WAF，默认为 `true`
+#### 必要配置
 
-### 获取 Cookie 和 CSRF Token 的方法
+- **MINEBBS\_EMAIL** (必填): 论坛登录邮箱/用户名
+- **MINEBBS\_PASSWORD** (必填): 论坛登录密码
+
+#### 可选配置
+
+- **MINEBBS\_TOTP\_SECRET**: TOTP 两步验证密钥（Base32 编码），如果开启了 2FA 则必填
+- **MINEBBS\_ACCOUNT\_NAME**: 账户名称，默认为 "Github Actions 账户"
+- **MINEBBS\_SKIP\_DELAY**: 是否跳过随机延迟，设置为 `true` 可跳过 1-5 分钟延迟（用于测试），默认为 `false`
+- **MINEBBS\_ENABLE\_WAF**: 是否启用 WAF 检测，设置为 `true` 自动绕过雷池 WAF，默认为 `true`
+
+#### 获取 Cookie 和 CSRF Token 的方法（仅本地部署需要）
 
 1. 使用浏览器（推荐 Chrome 或 Firefox）访问 [MineBBS 论坛](https://www.minebbs.com/)
-
 2. 登录你的账号
-
 3. 按 `F12` 打开开发者工具，切换到 `网络` 或 `Network` 选项卡
-
 4. 刷新页面，找到一个请求（通常是第一个请求），查看其 `请求头` 或 `Request Headers`
-
 5. 复制 `Cookie` 字段的完整内容，粘贴到配置文件的 `cookies` 字段中
-
 6. 切换到 `元素` 或 `Elements` 选项卡，查找 HTML 标签中的 `data-csrf` 属性，复制其完整值，粘贴到 `csrfToken` 字段中
 
    通常可以在 `<html>` 标签中找到，格式类似于：`data-csrf="123456789,abcdef1234567890"`
@@ -176,13 +181,7 @@ npm run signin:github
 - **重试间隔**: 指数退避（2 秒、4 秒、8 秒、最多 10 秒）
 - **适用场景**: 网络请求失败时自动重试
 
-## 签到逻辑
-
-Github Actions 版本采用**直接签到**策略：
-
-- **不预先检查**: 避免误判导致跳过签到
-- **直接执行**: 调用签到接口完成签到
-- **自动重试**: 遇到网络问题自动重试最多 3 次
+<br />
 
 ## 日志输出示例
 
@@ -207,16 +206,11 @@ Github Actions 版本采用**直接签到**策略：
 
 ## 注意事项
 
-1. Cookie 和 CSRF Token 可能会过期，过期后需要重新获取并更新配置
-
+1. Cookie 和 CSRF Token 可能会过期，过期后需要重新获取并更新配置（本地部署）
 2. 不要频繁运行脚本，以免被论坛服务器识别为异常行为
-
 3. 使用本脚本请遵守论坛规则，合理使用自动化工具
-
 4. 脚本仅供学习和个人使用，请勿用于商业用途
-
 5. 如论坛网站结构或签到机制发生变化，脚本可能需要更新
-
 6. **Github Actions 保活**: 为避免 Github Actions 因 60 天无提交被禁用，已添加自动保活工作流（每 30 天自动提交一次）
 
 ## 仓库保活
@@ -225,22 +219,93 @@ Github Actions 版本采用**直接签到**策略：
 
 - **保活频率**: 每 30 天自动提交一次
 - **保活文件**: `.github/KEEP_ALIVE.md`
-- **详细说明**: 查看 [保活说明文档](.github/KEEPALIVE_README.md)
+- **工作原理**:
+  - 每天 UTC 00:00 自动运行
+  - 只有在距离上次提交超过 30 天时才会执行提交
+  - 自动更新保活文件并推送到仓库
+
+### 手动触发保活
+
+如果需要立即执行保活，可以：
+
+1. 进入仓库的 `Actions` 标签页
+2. 选择 `Keep-Alive` 工作流
+3. 点击 `Run workflow` 按钮
+
+### 相关文件结构
+
+```
+.github/
+├── workflows/
+│   ├── signin.yml         # 签到工作流
+│   └── keep-alive.yml     # 保活工作流
+├── KEEP_ALIVE.md          # 保活记录（自动生成）
+└── KEEP_ALIVE_TIMESTAMP   # 时间戳（自动生成）
+```
 
 ## 问题排查
 
 如果签到失败，请检查以下几点：
 
-1. Cookie 是否正确且未过期
-2. CSRF Token 是否正确
+1. Cookie 是否正确且未过期（本地部署）
+2. CSRF Token 是否正确（本地部署）
 3. 网络连接是否正常
 4. 是否已经签到过了
+5. Github Secrets 是否正确配置（Github Actions）
+6. 是否正确配置了 TOTP（如果开启了 2FA）
 
 如有其他问题，请查看控制台输出的错误信息。
 
+## 常见问题
+
+### Q: 提示"缺少必要的环境变量"
+
+**A**: 检查是否正确添加了 `MINEBBS_EMAIL` 和 `MINEBBS_PASSWORD` Secrets。
+
+### Q: 登录失败，提示需要两步验证
+
+**A**: 你的账号开启了 2FA，需要添加 `MINEBBS_TOTP_SECRET` Secret。
+
+### Q: 如何获取 TOTP 密钥？
+
+**A**:
+
+1. 在 MineBBS 论坛设置中开启两步验证
+2. 使用 Authenticator 应用（如 Google Authenticator）扫描二维码
+3. 在扫描前复制显示的密钥（Base32 编码）
+
+### Q: Cookie 会过期吗？
+
+**A**: 使用 Github Actions 模式不会过期！每次执行都会自动登录获取最新的 Cookie。本地部署模式需要手动更新。
+
+## 安全提示
+
+1. **不要分享 Secrets**: Github Secrets 是加密存储的，但也不要分享给他人
+2. **定期更新密码**: 建议定期更新论坛密码并在 Github 中同步更新
+3. **使用强密码**: 确保论坛密码足够强壮
+4. **启用 2FA**: 建议开启两步验证提高账号安全性
+5. **私有仓库**: 如果使用私有仓库，确保 Actions 权限设置正确
+
+## 项目结构
+
+```
+MineBBSAutoSignin/
+├── .github/
+│   ├── workflows/
+│   │   ├── signin.yml         # 签到工作流
+│   │   └── keep-alive.yml     # 保活工作流
+│   ├── KEEP_ALIVE.md          # 保活记录
+│   └── KEEP_ALIVE_TIMESTAMP   # 时间戳
+├── config/
+│   └── config.json            # 本地部署配置文件
+├── signin.js                  # 主签到脚本
+├── signin-github.js           # Github Actions 版本
+├── package.json               # 项目依赖
+└── README.md                  # 项目说明文档
+```
+
 ## 相关文档
 
-- [Github Actions 配置指南](GITHUB_ACTIONS_GUIDE.md) - 详细的 Github Actions 配置说明
 - [项目 License](LICENSE) - MIT License
 
 ## 免责声明

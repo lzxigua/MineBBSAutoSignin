@@ -48,9 +48,12 @@ jobs:
       - name: 执行自动签到
         env:
           # 从 Github Secrets 获取用户凭据
-          MINEBBS_COOKIES: ${{ secrets.MINEBBS_COOKIES }}
-          MINEBBS_CSRF_TOKEN: ${{ secrets.MINEBBS_CSRF_TOKEN }}
+          MINEBBS_EMAIL: ${{ secrets.MINEBBS_EMAIL }}
+          MINEBBS_PASSWORD: ${{ secrets.MINEBBS_PASSWORD }}
+          MINEBBS_TOTP_SECRET: ${{ secrets.MINEBBS_TOTP_SECRET }}
           MINEBBS_ACCOUNT_NAME: ${{ secrets.MINEBBS_ACCOUNT_NAME || 'Github Actions 账户' }}
           # 跳过随机延迟（测试时使用，生产环境建议设为 false 或不设置）
           MINEBBS_SKIP_DELAY: ${{ secrets.MINEBBS_SKIP_DELAY || 'false' }}
+          # 是否启用 WAF 检测（默认启用）
+          MINEBBS_ENABLE_WAF: ${{ secrets.MINEBBS_ENABLE_WAF || 'true' }}
         run: node signin-github.js
