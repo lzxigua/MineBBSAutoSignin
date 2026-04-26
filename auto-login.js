@@ -101,9 +101,20 @@ async function submitLogin(email, password, cookies) {
     };
     
     const response = await client.get(BASE_URL, { headers });
+    
+    // 调试输出：获取的 HTML 内容
+    console.log('[调试] 获取到的 HTML 内容:');
+    console.log(response.data);
+    console.log('[调试] HTML 内容结束');
+    console.log(`[调试] HTML 总长度：${response.data.length} 字符`);
+    
     const xfToken = extractXfTokenFromHtml(response.data);
     
     if (!xfToken) {
+        console.error('[错误] 无法从 HTML 中提取 _xfToken');
+        console.error('[错误] 尝试匹配的模式:');
+        console.error('  - data-csrf 模式：/data-csrf="([^"]+)"/');
+        console.error('  - _xfToken 模式：/name="_xfToken" value="([^"]+)"/');
         throw new Error('无法从 HTML 中获取 _xfToken');
     }
     
