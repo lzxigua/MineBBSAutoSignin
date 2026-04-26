@@ -6,8 +6,17 @@
 
 const axios = require('axios');
 const https = require('https');
-const { generateTOTP } = require('@rabbit-company/totp');
 const { getAllCookies, resetCookieJar, client } = require('./waf-handler');
+
+let generateTOTP;
+
+async function loadTOTPModule() {
+    if (!generateTOTP) {
+        const totpModule = await import('@rabbit-company/totp');
+        generateTOTP = totpModule.generateTOTP;
+    }
+    return generateTOTP;
+}
 
 const BASE_URL = 'https://www.minebbs.com';
 
@@ -51,8 +60,9 @@ async function generateTOTPCodeWithRetry(secret) {
     let remainingTime;
     
     do {
-        // 生成 TOTP 验证码
-        code = await generateTOTP(secret);
+        // 加载 TOTP 模块并生成验证码
+        const totpFn = await loadTOTPModule();
+        code = await totpFn(secret);
         
         // 计算当前时间步的剩余时间
         const currentTime = Math.floor(Date.now() / 1000);
